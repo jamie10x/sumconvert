@@ -1,6 +1,5 @@
 package uz.neopulsar.sumconvert.di
 
-import androidx.compose.ui.text.font.FontVariation.Settings
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
@@ -25,7 +24,6 @@ val appModule = module {
     }
 
     // 2. Storage
-    single { Settings() } // Default Platform Settings
     single { RateStorage(get()) }
 
     // 3. Repository

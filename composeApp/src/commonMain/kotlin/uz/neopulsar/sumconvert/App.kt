@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.KoinApplication
 import uz.neopulsar.sumconvert.di.appModule
+import uz.neopulsar.sumconvert.di.platformModule
 import uz.neopulsar.sumconvert.presentation.converter.ConverterScreen
 
 @Composable
@@ -12,7 +13,7 @@ import uz.neopulsar.sumconvert.presentation.converter.ConverterScreen
 fun App() {
     // Wrap everything in Koin
     KoinApplication(application = {
-        modules(appModule)
+        modules(appModule, platformModule)
     }) {
         MaterialTheme {
             ConverterScreen()
