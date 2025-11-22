@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uz.neopulsar.sumconvert.data.repository.CurrencyRepository
 import uz.neopulsar.sumconvert.domain.model.Currency
+import uz.neopulsar.sumconvert.presentation.util.formatNumber
 
 // 1. Define the UI State
 data class ConverterUiState(
@@ -90,8 +91,8 @@ class ConverterViewModel(
         if (s.fromCurrency == null || s.toCurrency == null) return
 
         val amount = s.inputAmount.toDoubleOrNull() ?: 0.0
-        val from = s.fromCurrency!!
-        val to = s.toCurrency!!
+        val from = s.fromCurrency
+        val to = s.toCurrency
 
         // Formula: (Amount * FromRate / FromNominal) / (ToRate / ToNominal)
         // Note: CBU rates are all relative to UZS (Nominal 1, Rate 1)
@@ -99,16 +100,7 @@ class ConverterViewModel(
         val valueInUzs = amount * (from.rate / from.nominal)
         val valueInTarget = valueInUzs / (to.rate / to.nominal)
 
-        // Format result (simple string format for now)
-        // In real app, use a NumberFormatter
-        val formatted = if (valueInTarget % 1.0 == 0.0) {
-            valueInTarget.toLong().toString()
-        } else {
-            // Keep 2 decimal places manually
-            val p = (valueInTarget * 100).toLong() / 100.0
-            p.toString()
-        }
-
+        val formatted = formatNumber(valueInTarget)
         _state.value = _state.value.copy(resultAmount = formatted)
     }
 }

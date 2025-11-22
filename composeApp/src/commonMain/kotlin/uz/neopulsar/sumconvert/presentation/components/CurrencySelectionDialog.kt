@@ -6,8 +6,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -21,10 +26,20 @@ fun CurrencySelectionDialog(
     onDismiss: () -> Unit,
     onSelect: (Currency) -> Unit
 ) {
-    // A simple full-screen-ish dialog for generic KMP support
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Filter Logic
+    val filteredRates = remember(searchQuery, rates) {
+        if (searchQuery.isBlank()) rates
+        else rates.filter {
+            it.code.contains(searchQuery, ignoreCase = true) ||
+                    it.name.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false) // Full width
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -32,26 +47,37 @@ fun CurrencySelectionDialog(
             color = MaterialTheme.colorScheme.surface
         ) {
             Column {
-                // Header
+                // Header with Close
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Valyutani tanlang", // "Select Currency"
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Text("Valyutani tanlang", style = MaterialTheme.typography.titleLarge)
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
 
+                // SEARCH BAR
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    placeholder = { Text("Qidirish... (USD, Yevro)") },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider()
 
-                // List
+                // Filtered List
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(rates) { currency ->
+                    items(filteredRates) { currency ->
                         CurrencyItem(
                             currency = currency,
                             onClick = {
@@ -65,6 +91,7 @@ fun CurrencySelectionDialog(
         }
     }
 }
+
 
 @Composable
 fun CurrencyItem(

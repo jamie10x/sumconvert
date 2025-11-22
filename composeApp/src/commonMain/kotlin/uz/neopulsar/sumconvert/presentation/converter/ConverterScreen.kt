@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapVert
@@ -21,9 +23,9 @@ import uz.neopulsar.sumconvert.presentation.components.CurrencySelectionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConverterScreen() {
-    // Inject ViewModel
-    // Note: depending on Koin version, use koinViewModel() or inject manually
+fun ConverterScreen(
+    onBackClick: () -> Unit
+    ) {
     val viewModel: ConverterViewModel = koinInject()
     val state by viewModel.state.collectAsState()
 
@@ -33,7 +35,12 @@ fun ConverterScreen() {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Sum Converter") },
+                title = { Text("Valyuta") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.loadRates() }) {
                         Icon(Icons.Default.Refresh, "Refresh")

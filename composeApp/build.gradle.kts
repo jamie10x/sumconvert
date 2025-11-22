@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -50,6 +49,8 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.multiplatform.settings)
             implementation(compose.materialIconsExtended)
+
+            implementation(libs.androidx.navigation.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
