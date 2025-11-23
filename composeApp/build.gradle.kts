@@ -49,8 +49,9 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.multiplatform.settings)
             implementation(compose.materialIconsExtended)
-
-            implementation(libs.androidx.navigation.compose)
+            implementation(libs.voyager.navigator)
+            implementation(libs.voyager.screenmodel)
+            implementation(libs.voyager.koin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

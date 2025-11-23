@@ -6,7 +6,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapVert
@@ -17,18 +16,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import org.koin.compose.koinInject
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import uz.neopulsar.sumconvert.domain.model.Currency
 import uz.neopulsar.sumconvert.presentation.components.CurrencySelectionDialog
 
+class ConverterScreen : Screen {
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        val viewModel = getScreenModel<ConverterViewModel>()
+        val state by viewModel.state.collectAsState()
+
+        ConverterScreenContent(
+            state = state,
+            viewModel = viewModel,
+            onBackClick = { navigator.pop() }
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConverterScreen(
+private fun ConverterScreenContent(
+    state: ConverterUiState,
+    viewModel: ConverterViewModel,
     onBackClick: () -> Unit
-    ) {
-    val viewModel: ConverterViewModel = koinInject()
-    val state by viewModel.state.collectAsState()
-
+) {
     var showFromDialog by remember { mutableStateOf(false) }
     var showToDialog by remember { mutableStateOf(false) }
 
@@ -112,7 +128,7 @@ fun ConverterScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Info Block
-                    if(state.fromCurrency != null && state.toCurrency != null) {
+                    if (state.fromCurrency != null && state.toCurrency != null) {
                         Text(
                             text = "Markaziy Bank kursi bo'yicha",
                             style = MaterialTheme.typography.bodySmall,

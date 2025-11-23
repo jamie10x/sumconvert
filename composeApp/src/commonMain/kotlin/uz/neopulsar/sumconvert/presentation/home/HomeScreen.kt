@@ -7,29 +7,71 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import uz.neopulsar.sumconvert.domain.model.AppCategory
+import uz.neopulsar.sumconvert.domain.model.HistoryItem
+import uz.neopulsar.sumconvert.presentation.converter.ConverterScreen
+import uz.neopulsar.sumconvert.presentation.generic.GenericScreen
+
+class HomeScreen : Screen {
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        val viewModel = getScreenModel<HomeViewModel>()
+
+        val historyList by viewModel.history.collectAsState()
+
+        // Trigger reload on appear
+        LaunchedEffect(Unit) { viewModel.refreshHistory() }
+
+        HomeScreenContent(
+            historyList = historyList,
+            onCategoryClick = { category ->
+                when (category) {
+                    AppCategory.CURRENCY -> navigator.push(ConverterScreen())
+                    // Support for Construction, Math, Food, Fuel, Gold
+                    AppCategory.CONSTRUCTION,
+                    AppCategory.MATH,
+                    AppCategory.FOOD,
+                    AppCategory.FUEL,
+                    AppCategory.GOLD ->
+                        navigator.push(GenericScreen(category.id))
+                    else -> {}
+                }
+            }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+private fun HomeScreenContent(
+    historyList: List<HistoryItem>,
     onCategoryClick: (AppCategory) -> Unit
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Custom minimalistic header
+            // HEADER with Safe Area padding
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .windowInsetsPadding(WindowInsets.statusBars) // 👈 FIX: Respects Notch/Island
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -37,8 +79,10 @@ fun HomeScreen(
                     text = "Konvertor",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
                 )
-                // Optional: Dark Mode Toggle or Settings here
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                // Settings Button (Visual only for V1)
+                IconButton(onClick = { /* Todo: Settings */ }) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                }
             }
         }
     ) { padding ->
@@ -48,32 +92,31 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            // 1. Search Bar
-            SearchBarDummy()
+            // Removed SearchBarDummy() - Cleaner UI
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. Categories Header
+            // Categories Section
             Text(
                 text = "Kategoriyalar",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 3. Grid
+            // Grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f) // Takes available space
+                modifier = Modifier.weight(1f)
             ) {
-                items(AppCategory.entries.toTypedArray()) { category ->
+                // Filter out CUSTOM so it doesn't show
+                items(AppCategory.entries.filter { it != AppCategory.CUSTOM }.toTypedArray()) { category ->
                     CategoryCard(category) { onCategoryClick(category) }
                 }
             }
 
-            // 4. Recent History (Preview)
-            // We will create a full History implementation later
+            // History Section
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "So'nggi konvertatsiyalar",
@@ -81,26 +124,27 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            HistoryPreviewItem("100 USD", "1,267,500 UZS")
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
+            if (historyList.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(80.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Hozircha tarix bo'sh",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    historyList.take(3).forEach { item ->
+                        HistoryPreviewItem(item)
+                    }
+                }
+            }
 
-@Composable
-fun SearchBarDummy() {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant, // Light gray
-        modifier = Modifier.fillMaxWidth().height(50.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Qidirish...", color = Color.Gray)
+            // Bottom Spacer for aesthetic balance
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -109,45 +153,47 @@ fun SearchBarDummy() {
 fun CategoryCard(category: AppCategory, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White), // Or use Theme Surface
+        colors = CardDefaults.cardColors(containerColor = Color.White), // Light card
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(16.dp),
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start
         ) {
             // Icon Box
             Surface(
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = category.icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = category.nameUz,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             )
         }
     }
 }
 
 @Composable
-fun HistoryPreviewItem(from: String, to: String) {
+fun HistoryPreviewItem(item: HistoryItem) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -155,17 +201,30 @@ fun HistoryPreviewItem(from: String, to: String) {
         ) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(32.dp)
+                color = MaterialTheme.colorScheme.surfaceVariant, // Subtler gray
+                modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Default.History,
+                        null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text("$from → $to", fontWeight = FontWeight.Bold)
-                Text("Bugun, 14:21", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                // Using the formatted strings saved in DB
+                Text(
+                    text = "${item.amountIn} ${item.fromCode} → ${item.amountOut} ${item.toCode}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                    text = item.timestamp,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray
+                )
             }
         }
     }

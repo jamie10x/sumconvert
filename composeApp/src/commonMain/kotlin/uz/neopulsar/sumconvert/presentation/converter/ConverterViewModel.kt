@@ -1,14 +1,19 @@
 package uz.neopulsar.sumconvert.presentation.converter
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import uz.neopulsar.sumconvert.data.local.HistoryStorage
 import uz.neopulsar.sumconvert.data.repository.CurrencyRepository
 import uz.neopulsar.sumconvert.domain.model.Currency
+import uz.neopulsar.sumconvert.domain.model.HistoryItem
 import uz.neopulsar.sumconvert.presentation.util.formatNumber
+import kotlin.random.Random
 
 // 1. Define the UI State
 data class ConverterUiState(
@@ -23,18 +28,21 @@ data class ConverterUiState(
 
 // 2. The ViewModel
 class ConverterViewModel(
-    private val repository: CurrencyRepository
-) : ViewModel() {
+    private val repository: CurrencyRepository,
+    private val historyStorage: HistoryStorage
+) : ScreenModel {
 
     private val _state = MutableStateFlow(ConverterUiState(isLoading = true))
     val state: StateFlow<ConverterUiState> = _state.asStateFlow()
+    private var saveJob: Job? = null
+
 
     init {
         loadRates()
     }
 
     fun loadRates() {
-        viewModelScope.launch {
+        screenModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
 
             repository.getRates().fold(
@@ -91,16 +99,45 @@ class ConverterViewModel(
         if (s.fromCurrency == null || s.toCurrency == null) return
 
         val amount = s.inputAmount.toDoubleOrNull() ?: 0.0
-        val from = s.fromCurrency
-        val to = s.toCurrency
-
-        // Formula: (Amount * FromRate / FromNominal) / (ToRate / ToNominal)
-        // Note: CBU rates are all relative to UZS (Nominal 1, Rate 1)
+        val from = s.fromCurrency!!
+        val to = s.toCurrency!!
 
         val valueInUzs = amount * (from.rate / from.nominal)
         val valueInTarget = valueInUzs / (to.rate / to.nominal)
 
         val formatted = formatNumber(valueInTarget)
         _state.value = _state.value.copy(resultAmount = formatted)
+
+        // TRIGGER AUTO SAVE
+        triggerAutoSave(
+            fromCode = from.code,
+            toCode = to.code,
+            inAmt = s.inputAmount,
+            outAmt = formatted
+        )
+    }
+
+    private fun triggerAutoSave(fromCode: String, toCode: String, inAmt: String, outAmt: String) {
+        // Don't save empty or zero conversions
+        if (inAmt == "0" || inAmt.isEmpty()) return
+
+        // Cancel previous timer
+        saveJob?.cancel()
+
+        // Start new timer: Wait 2 seconds after user stops typing
+        saveJob = screenModelScope.launch {
+            delay(2000)
+
+            val item = HistoryItem(
+                id = Random.nextLong(),
+                fromCode = fromCode,
+                toCode = toCode,
+                amountIn = inAmt,
+                amountOut = outAmt,
+                timestamp = "Bugun" // Simply "Today" for V1
+            )
+            historyStorage.saveItem(item)
+            println("History Saved: $inAmt $fromCode")
+        }
     }
 }
